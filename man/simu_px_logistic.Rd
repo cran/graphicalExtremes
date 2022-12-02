@@ -18,8 +18,9 @@ distribution.}
 \item{theta}{Numeric --- assume \eqn{0 < \theta < 1}.}
 }
 \value{
-Numeric matrix \eqn{n\times d}{n x d}. Simulated data.
+Numeric \nxd matrix. Simulated data.
 }
 \description{
 Simulates logistic extremal functions
 }
+\keyword{internal}

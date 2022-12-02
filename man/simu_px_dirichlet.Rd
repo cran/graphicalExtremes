@@ -18,8 +18,9 @@ distribution.}
 \item{alpha}{Numeric vector of size \code{d}.}
 }
 \value{
-Numeric matrix \eqn{n\times d}{n x d}. Simulated data.
+Numeric \nxd matrix. Simulated data.
 }
 \description{
 Simulates Dirichlet extremal functions
 }
+\keyword{internal}

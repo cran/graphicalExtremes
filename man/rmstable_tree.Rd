@@ -22,12 +22,12 @@ undirected graph that is connected and has no cycles.}
 
 \item{par}{Respective parameter for the given \code{model}, that is,
 \itemize{
-\item \eqn{\Gamma}, numeric \eqn{d \times d}{d x d} variogram matrix,
+\item \eGamma, numeric \dxd variogram matrix,
 where only the entries corresponding to the edges of the \code{tree} are used,
 if \code{model = HR}. Alternatively, can be a vector of
-length \eqn{d - 1} containing the entries of the variogram corresponding
+length \code{d-1} containing the entries of the variogram corresponding
 to the edges of the given \code{tree}.
-\item \eqn{\theta \in (0, 1)}{0 < \theta < 1}, vector of length \eqn{d - 1}
+\item \eqn{\theta \in (0, 1)}{0 < \theta < 1}, vector of length \code{d-1}
 containing the logistic parameters corresponding
 to the edges of the given \code{tree}, if \code{model = logistic}.
 \item a matrix of size \eqn{(d - 1) \times 2}{(d - 1) x 2}, where the rows
@@ -36,7 +36,7 @@ for each of the edges in \code{tree}, if \code{model = dirichlet}.
 }}
 }
 \value{
-Numeric matrix of size \eqn{n \times d}{n x d} of simulations of the
+Numeric \nxd matrix of simulations of the
 multivariate max-stable distribution.
 }
 \description{
@@ -54,20 +54,21 @@ distribution see \insertCite{coles1991modelling;textual}{graphicalExtremes}.
 ## A 4-dimensional HR tree model
 
 my_tree <- igraph::graph_from_adjacency_matrix(rbind(
-c(0, 1, 0, 0),
-c(1, 0, 1, 1),
-c(0, 1, 0, 0),
-c(0, 1, 0, 0)),
-mode = "undirected")
+  c(0, 1, 0, 0),
+  c(1, 0, 1, 1),
+  c(0, 1, 0, 0),
+  c(0, 1, 0, 0)
+),
+mode = "undirected"
+)
 n <- 10
-Gamma_vec <- c(.5,1.4,.8)
+Gamma_vec <- c(.5, 1.4, .8)
 rmstable_tree(n, "HR", tree = my_tree, par = Gamma_vec)
 
 ## A 4-dimensional Dirichlet model with asymmetric edge distributions
 
-alpha = cbind(c(.2, 1, .5), c(1.5, .6, .8))
+alpha <- cbind(c(.2, 1, .5), c(1.5, .6, .8))
 rmstable_tree(n, model = "dirichlet", tree = my_tree, par = alpha)
-
 }
 \references{
 \insertAllCited{}

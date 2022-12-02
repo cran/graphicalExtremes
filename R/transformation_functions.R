@@ -1,428 +1,435 @@
-#' Completion of Gamma matrix on block graphs
+
+#' Transformation of matrix to graph object
 #'
-#' Given a block \code{graph} and \code{Gamma} matrix with entries only specified on
-#' edges within the cliques of the \code{graph}, it returns the full \code{Gamma} matrix
-#' implied by the conditional independencies.
+#' Transforms a \eGamma or \eTheta matrix to an [`igraph::graph`] object for
+#' the corresponding Huesler--Reiss extremal graphical model.
 #'
-#' @param graph Graph object from \code{igraph} package.
-#' The \code{graph} must be an undirected block graph, i.e., a decomposable, connected
-#' graph with singleton separator sets.
-#' @param Gamma Numeric \eqn{d \times d}{d x d} variogram matrix
-#' with entries only specified within the cliques of the \code{graph}. Alternatively, can be a
-#' vector containing the \code{Gamma} entries for each edge in the same order as in the
-#' \code{graph} object.
+#' @param Gamma Numeric \dxd variogram matrix.
+#' @param tol Numeric scalar, entries in the precision matrix with absolute value
+#' smaller than this are considered to be zero.
 #'
-#' @return Completed \eqn{d \times d}{d x d} \code{Gamma} matrix.
-#'s
-#' @details
-#' For a block graph it suffices to specify the dependence parameters of the Huesler--Reiss
-#' distribution within the cliques of the \code{graph}, the remaining entries are implied
-#' by the conditional independence properties. For details see \insertCite{eng2019;textual}{graphicalExtremes}.
+#' @return Graph object from `igraph` package. An undirected graph.
 #'
 #' @examples
-#' ## Complete a 4-dimensional HR distribution
+#' Gamma <- cbind(
+#'   c(0, 1.5, 1.5, 2),
+#'   c(1.5, 0, 2, 1.5),
+#'   c(1.5, 2, 0, 1.5),
+#'   c(2, 1.5, 1.5, 0)
+#' )
 #'
-#' my_graph <- igraph::graph_from_adjacency_matrix(rbind(
-#' c(0, 1, 0, 0),
-#' c(1, 0, 1, 1),
-#' c(0, 1, 0, 1),
-#' c(0, 1, 1, 0)),
-#' mode = "undirected")
+#' Gamma2graph(Gamma)
 #'
-#' Gamma <- rbind(
-#' c(0, .5, NA, NA),
-#' c(.5, 0, 1, 1.5),
-#' c(NA, 1, 0, .8),
-#' c(NA, 1.5, .8, 0))
-#'
-#' complete_Gamma(Gamma, my_graph)
-#'
-#' ## Alternative
-#'
-#' Gamma_vec <- c(.5, 1, 1.5, .8)
-#' complete_Gamma(Gamma_vec, my_graph)
-#'
-#' @references
-#'  \insertAllCited{}
-#'
+#' @family MatrixTransformations
+#' @seealso [get_large_tol()]
+#' @rdname Gamma2graph
 #' @export
-#'
-complete_Gamma = function(Gamma, graph){
-
-  # set up main variables
-  d <- igraph::vcount(graph)
-  e <- igraph::ecount(graph)
-
-  # check if it is directed
-  if (igraph::is_directed(graph)){
-    warning("The given graph is directed. Converted to undirected.")
-    graph <- igraph::as.undirected(graph)
-  }
-
-  # check if it is connected
-  is_connected <- igraph::is_connected(graph)
-
-  if (!is_connected){
-    stop("The given graph is not connected.")
-  }
-
-  # check if graph is decomposable
-  is_decomposable <- igraph::is_chordal(graph)$chordal
-  if (!is_decomposable){
-    stop("The given graph is not decomposable (i.e., chordal).")
-  }
-
-  # transform Gamma if needed
-  if(is.vector(Gamma)){
-
-    if (length(Gamma) != e){
-      stop(paste("The argument Gamma must be a symmetric d x d matrix,",
-                 "or a vector with as many entries as the number of edges",
-                 "in the graph."))
-    }
-    G = matrix(0,d,d)
-    G[igraph::ends(graph,igraph::E(graph))] = Gamma
-    G = G + t(G)
-  }  else{
-    G = Gamma
-
-    # check that Gamma is d x d
-
-    if (NROW(G) != d | NCOL(G) != d){
-      stop(paste("The argument Gamma must be a symmetric d x d matrix,",
-                 "or a vector with as many entries as the number of edges",
-                 "in the graph."))
-    }
-
-    # check that Gamma is symmetric
-    if (any(G != t(G), na.rm = T)) {
-      stop(paste("The argument Gamma must be a symmetric d x d matrix,",
-                 "or a vector with as many entries as the number of edges",
-                 "in the graph."))
-    }
-
-  }
-
-  # computes cliques
-  cli = igraph::max_cliques(graph)
-  ncli = length(cli)
-
-  # if only one clique terminate
-  if (ncli == 1) {return(G)}
-
-  # else, continue
-  cli.selected = 1
-  idx1 = cli[[1]]
-  V = 1:ncli
-
-  for(i in 1:(ncli-1)){
-    cli.idx = min(V[which(sapply(V, function(j) length(intersect(idx1, cli[[j]])) > 0) == 1 & !is.element(V, cli.selected))])
-    idx2 = cli[[cli.idx]]
-    l1 = length(idx1)
-    l2 = length(idx2)
-    k0 = intersect(idx1, idx2)
-
-    if (length(k0) > 1){
-      stop("The given graph is not a block graph.")
-    }
-    G[setdiff(idx1, k0), setdiff(idx2, k0)] = matrix(rep(G[setdiff(idx1, k0),k0], times=l2-1), l1-1, l2-1) +
-      t(matrix(rep(G[setdiff(idx2, k0),k0], times=l1-1), l2-1, l1-1))
-    G[setdiff(idx2, k0), setdiff(idx1, k0)] = t(G[setdiff(idx1, k0), setdiff(idx2, k0)])
-    cli.selected = c(cli.selected, cli.idx)
-    idx1 = union(idx1, idx2)
-  }
-  return(G)
+Gamma2graph <- function(Gamma, tol=get_large_tol()){
+  Theta2graph(Gamma2Theta(Gamma))
+}
+#' @param Theta Numeric \dxd precision matrix.
+#' @rdname Gamma2graph
+#' @export
+Theta2graph <- function(Theta, tol=get_large_tol()){
+  A <- 1*(abs(Theta) > tol)
+  graph <- igraph::graph_from_adjacency_matrix(
+    A,
+    mode = "undirected",
+    diag = FALSE
+  )
+  return(graph)
 }
 
-
-
-#' Transformation of \eqn{\Gamma} matrix to graph object
-#'
-#' Transforms \code{Gamma} matrix to an \code{igraph} object for
-#' the corresponding Huesler--Reiss extremal graphical model,
-#' and plots it (optionally).
-#'
-#' @param Gamma Numeric \eqn{d \times d}{d x d} variogram matrix.
-#' @param to_plot Logical. If \code{TRUE} (default), it plots the resulting
-#' graph.
-#' @param ... Graphical parameters for the \code{\link[igraph]{plot.igraph}}
-#' function of the package \code{igraph}.
-#'
-#' @return Graph object from \code{igraph} package. An undirected graph.
-#'
-#' @details
-#' The variogram uniquely determines the extremal graph structure of the
-#' corresponding Huesler--Reiss distribution. The conditional independencies
-#' can be identified from the inverses of the matrices \eqn{\Sigma^{(k)}}{\Sigma^(k)}
-#' defined in equation (10) in \insertCite{eng2019;textual}{graphicalExtremes}.
-#'
-#' @examples
-#' Gamma <-  cbind(c(0, 1.5, 1.5, 2),
-#'                 c(1.5, 0, 2, 1.5),
-#'                 c(1.5, 2, 0, 1.5),
-#'                 c(2, 1.5, 1.5, 0))
-#'
-#' Gamma2graph(Gamma, to_plot = TRUE)
-#'
-#' @references
-#'  \insertAllCited{}
-#'
-#' @export
-Gamma2graph <- function(Gamma, to_plot = TRUE, ...){
-  null.mat <- matrix(0, nrow=nrow(Gamma), ncol=ncol(Gamma))
-  for(i in 1:nrow(Gamma)){
-    null.mat[-i,-i] <- null.mat[-i,-i] +
-      (abs(solve(Gamma2Sigma(Gamma, i))) < 1e-6)
-  }
-  graph = igraph::graph_from_adjacency_matrix(null.mat==0, diag =FALSE,
-                                              mode="undirected")
-
-  graph <- set_graph_parameters(graph)
-  if (to_plot){
-    igraph::plot.igraph(graph, ...)
-  }
+#' Transformation of a partial matrix to a graph
+#' 
+#' Creates a graph that has edges in entries corresponding to non-NA entries
+#' in Gamma.
+#' 
+#' @param Matrix A matrix with NA entries
+#' 
+#' @return An `igraph::graph` object
+#' 
+partialMatrixToGraph <- function(Matrix){
+  A <- !is.na(Matrix)
+  graph <- igraph::graph_from_adjacency_matrix(
+    A,
+    mode='undirected',
+    diag = FALSE
+  )
   return(graph)
 }
 
 
-
 #' Data standardization to multivariate Pareto scale
 #'
-#' Transforms the \code{data} matrix empirically to the multivariate Pareto scale.
+#' Transforms the `data` matrix empirically to the multivariate Pareto scale.
 #'
-#' @param data Numeric matrix of size \eqn{n\times d}{n x d}, where \eqn{n} is the
-#' number of observations and \eqn{d} is the dimension.
+#' @param data Numeric \nxd matrix, where `n` is the
+#' number of observations and `d` is the dimension.
 #' @param p Numeric between 0 and 1. Probability used for the quantile to
 #' threshold the data.
+#' @param na.rm Logical. If rows containing NAs should be removed.
 #'
-#' @return Numeric matrix \eqn{m \times d}{m x d}, where \eqn{m} is the number
-#' of rows in the original \code{data} matrix that are above the threshold.
+#' @return Numeric \eXTimesY{m}{d} matrix, where `m` is the number
+#' of rows in the original `data` matrix that are above the threshold.
 #'
 #' @details
-#' The columns of the \code{data} matrix are first transformed empirically to
+#' The columns of the `data` matrix are first transformed empirically to
 #' standard Pareto distributions. Then, only the observations where at least
-#' one component exceeds the \code{p}-quantile of the standard Pareto distribution
-#' are kept. Those observations are finally divided by the \code{p}-quantile
+#' one component exceeds the `p`-quantile of the standard Pareto distribution
+#' are kept. Those observations are finally divided by the `p`-quantile
 #' of the standard Pareto distribution to standardize them to the multivariate Pareto scale.
+#' 
+#' If `na.rm` is `FALSE`, missing entries are left as such during the transformation of univariate marginals.
+#' In the thresholding step, missing values are considered as `-Inf`.
 #'
 #' @examples
 #' n <- 20
 #' d <- 4
 #' p <- .8
-#' G <-  cbind(c(0, 1.5, 1.5, 2),
-#'             c(1.5, 0, 2, 1.5),
-#'             c(1.5, 2, 0, 1.5),
-#'             c(2, 1.5, 1.5, 0))
+#' G <- cbind(
+#'   c(0, 1.5, 1.5, 2),
+#'   c(1.5, 0, 2, 1.5),
+#'   c(1.5, 2, 0, 1.5),
+#'   c(2, 1.5, 1.5, 0)
+#' )
 #'
 #' set.seed(123)
-#' my_data = rmstable(n, "HR", d = d, par = G)
+#' my_data <- rmstable(n, "HR", d = d, par = G)
 #' data2mpareto(my_data, p)
-#'
 #' @export
-data2mpareto <- function(data, p){
-  xx <- 1/(1-apply(data, 2, unif))
-  q <- stats::quantile(xx, p)
-  idx <- which(apply(xx, 1, max) > q)
-  return(xx[idx,] / q)
+data2mpareto <- function(data, p, na.rm=FALSE) {
+  # If specified, remove all rows that contain >=1 NA:
+  if(na.rm){
+    naInRow <- apply(is.na(data), 1, any)
+    data <- data[!naInRow,,drop=FALSE]
+  }
+  if(nrow(data) == 0){
+    return(data)
+  }
+  # Convert data (and quantile `p`) to std. Pareto marginals:
+  dataPar <- matrix(
+    1 / (1 - apply(data, 2, unif)), 
+    nrow(data),
+    ncol(data)
+  )
+  pPar <- 1 / (1 - p) 
+  # Keep only rows with infty-norm > threshold:
+  idx <- suppressWarnings(apply(dataPar, 1, max, na.rm=TRUE) > pPar)
+  dataPar <- dataPar[idx,,drop=FALSE] / pPar
+  return(dataPar)
 }
 
 
-#' Transformation of \eqn{\Sigma^{(k)}}{\Sigma^(k)} matrix to \eqn{\Gamma} matrix
+#' Transformation of \eSigma and \eSigmaK matrix to \eGamma matrix
 #'
-#' Transforms the \eqn{\Sigma^{(k)}}{\Sigma^(k)} matrix from the definition of a
-#' Huesler--Reiss distribution to the corresponding \eqn{\Gamma} matrix.
+#' Transforms the \eSigmaK matrix from the definition of a
+#' Huesler--Reiss distribution to the corresponding \eGamma matrix.
 #'
-#' @param S Numeric \eqn{(d - 1) \times (d - 1)}{(d - 1) x (d - 1)} covariance matrix \eqn{\Sigma^{(k)}}{\Sigma^(k)}
+#' @param Sigma Numeric \d1xd1 covariance matrix \eSigmaK
 #' from the definition of a Huesler--Reiss distribution.
-#' Numeric \eqn{d \times d}{d x d} covariance matrix if \code{full = TRUE}, see \code{full}
-#' parameter.
-#' @param k Integer between \code{1} (the default value) and \code{d}.
-#' Indicates which matrix \eqn{\Sigma^{(k)}}{\Sigma^(k)} is represented by \code{S}.
-#' @param full Logical. If true, then the \code{k}th row and column in \eqn{\Sigma^{(k)}}{\Sigma^(k)}
-#' are included and the function returns a \eqn{d \times d}{d x d} matrix.
-#' By default, \code{full = FALSE}.
+#' Numeric \dxd covariance matrix if `full = TRUE`, see `full` parameter.
+#' @param k Integer between `1` (the default value) and `d`.
+#' Indicates which matrix \eSigmaK is given as `S`.
+#' @param full Logical. If true, then the `k`th row and column in \eSigmaK
+#' are included and the function returns a \dxd matrix.
+#' By default, `full = FALSE`.
 #'
 #' @details
-#' For any \code{k} from \code{1} to \code{d},
-#' the \eqn{\Sigma^{(k)}}{\Sigma^(k)} matrix of size \eqn{(d - 1) \times (d - 1)}{(d - 1) x (d - 1)}
+#' For any `k` from `1` to `d`,
+#' the \eSigmaK matrix of size \d1xd1
 #' in the definition of a
 #' Huesler--Reiss distribution can be transformed into a the
-#' corresponding \eqn{d \times d}{d x d} \eqn{\Gamma} matrix.
-#' If \code{full = TRUE}, then \eqn{\Sigma^{(k)}}{\Sigma^(k)} must be a \eqn{d \times d}{d x d}
-#' matrix with \code{k}th row and column
+#' corresponding \dxd \eGamma matrix.
+#' If `full = TRUE`, then \eSigmaK must be a \dxd
+#' matrix with `k`th row and column
 #' containing zeros. For details see \insertCite{eng2019;textual}{graphicalExtremes}.
-#' This is the inverse of function of \code{\link{Gamma2Sigma}}.
+#' This is the inverse of function of [Gamma2Sigma()].
 #'
-#' @return Numeric \eqn{d \times d}{d x d} \eqn{\Gamma} matrix.
+#' @return Numeric \dxd \eGamma matrix.
 #'
 #' @examples
-#' Sigma1 <-  rbind(c(1.5, 0.5, 1),
-#'                  c(0.5, 1.5, 1),
-#'                  c(1, 1, 2))
+#' Sigma1 <- rbind(
+#'   c(1.5, 0.5, 1),
+#'   c(0.5, 1.5, 1),
+#'   c(1, 1, 2)
+#' )
 #' Sigma2Gamma(Sigma1, k = 1, full = FALSE)
-#'
-#' @references
-#'  \insertAllCited{}
+#' 
+#' @references \insertAllCited{}
+#' 
+#' @family MatrixTransformations
 #'
 #' @export
-Sigma2Gamma <- function(S, k = 1, full = FALSE){
-  # complete S
-  if (!full){
-    d <- NROW(S)
-    S_full <- rbind(rep(0, d + 1), cbind(rep(0, d), S))
-
-    shuffle <- 1:(d + 1)
-    shuffle[shuffle <= k] <- shuffle[shuffle <= k] - 1
-    shuffle[1] <- k
-    shuffle <- order(shuffle)
-
-    S_full <- S_full[shuffle, shuffle]
+Sigma2Gamma <- function(Sigma, k = NULL, full = FALSE) {
+  if (full || is.null(k)) {
+    # Sigma is already d x d
+    S_full <- Sigma
   } else {
-    S_full <- S
+    # S is (d-1) x (d-1) => fill up with zeros
+    d <- NROW(Sigma) + 1
+    S_full <- matrix(0, d, d)
+    S_full[-k ,-k] <- Sigma
   }
 
   # compute Gamma
-  One <- rep(1, times=ncol(S_full))
+  One <- rep(1, times = ncol(S_full))
   D <- diag(S_full)
-  Gamma <- One%*%t(D) + D%*%t(One) - 2*S_full
+  Gamma <- One %*% t(D) + D %*% t(One) - 2 * S_full
 
   return(Gamma)
 }
 
 
 
-#' Transformation of \eqn{\Gamma} matrix to \eqn{\Sigma^{(k)}}{\Sigma^(k)} matrix
+#' Transformation of \eGamma matrix to \eSigma or \eSigmaK matrix
 #'
-#' Transforms the \code{Gamma} matrix from the definition of a
-#' Huesler--Reiss distribution to the corresponding \eqn{\Sigma^{(k)}}{\Sigma^(k)} matrix.
+#' Transforms the `Gamma` matrix from the definition of a
+#' Huesler--Reiss distribution to the corresponding
+#' \eSigma or \eSigmaK matrix.
 #'
-#'
-#' @param Gamma Numeric \eqn{d \times d}{d x d} variogram matrix.
-#' @param k Integer between \code{1} (the default value) and \code{d}.
-#' Indicates which matrix \eqn{\Sigma^{(k)}}{\Sigma^(k)} should be produced.
-#' @param full Logical. If true, then the \code{k}th row and column in \eqn{\Sigma^{(k)}}{\Sigma^(k)}
-#' are included and the function returns a \eqn{d \times d}{d x d} matrix.
-#' By default, \code{full = FALSE}.
+#' @param Gamma Numeric \dxd variogram matrix.
+#' @param k `NULL` (default) or an integer between `1` and `d`.
+#' Indicates which matrix \eSigma, or \eSigmaK
+#' should be produced.
+#' @param full Logical. If true, then the `k`th row and column in \eSigmaK
+#' are included and the function returns a \dxd matrix.
+#' By default, `full = FALSE`.
 #'
 #' @details
-#' Every \eqn{d \times d}{d x d} \code{Gamma} matrix in the definition of a
+#' Every \dxd `Gamma` matrix in the definition of a
 #' Huesler--Reiss distribution can be transformed into a
-#' \eqn{(d - 1) \times (d - 1)}{(d - 1) x (d - 1)} \eqn{\Sigma^{(k)}}{\Sigma^(k)} matrix,
-#' for any \code{k} from \code{1} to \code{d}. The inverse of \eqn{\Sigma^{(k)}}{\Sigma^(k)}
+#' \d1xd1 \eSigmaK matrix,
+#' for any `k` from `1` to `d`. The inverse of \eSigmaK
 #' contains the graph structure corresponding to the Huesler--Reiss distribution
-#' with parameter matrix \code{Gamma}. If \code{full = TRUE}, then \eqn{\Sigma^{(k)}}{\Sigma^(k)}
-#' is returned as a \eqn{d \times d}{d x d} matrix with additional \code{k}th row and column
-#' that contain zeros. For details see \insertCite{eng2019;textual}{graphicalExtremes}.
-#' This is the inverse of function of \code{\link{Sigma2Gamma}}.
+#' with parameter matrix `Gamma`. If `full = TRUE`, then \eSigmaK
+#' is returned as a \dxd matrix with additional `k`th row and column
+#' that contain zeros.
+#' For details see \insertCite{eng2019;textual}{graphicalExtremes} and
+#' \insertCite{hen2022;textual}{graphicalExtremes}.
 #'
-#' @return Numeric \eqn{\Sigma^{(k)}}{\Sigma^(k)} matrix of size \eqn{(d - 1) \times (d - 1)}{(d - 1) x (d - 1)} if
-#' \code{full = FALSE}, and of size \eqn{d \times d}{d x d} if \code{full = TRUE}.
+#' @return Numeric \eSigmaK matrix of size \d1xd1 if
+#' `full = FALSE`, and \eSigma of size \dxd if `full = TRUE`.
 #'
 #' @examples
-#' Gamma <-  cbind(c(0, 1.5, 1.5, 2),
-#'                 c(1.5, 0, 2, 1.5),
-#'                 c(1.5, 2, 0, 1.5),
-#'                 c(2, 1.5, 1.5, 0))
+#' Gamma <- cbind(
+#'   c(0, 1.5, 1.5, 2),
+#'   c(1.5, 0, 2, 1.5),
+#'   c(1.5, 2, 0, 1.5),
+#'   c(2, 1.5, 1.5, 0)
+#' )
 #' Gamma2Sigma(Gamma, k = 1, full = FALSE)
-#'
-#'
-#' @references
-#'  \insertAllCited{}
+#' 
+#' @references \insertAllCited{}
+#' 
+#' @family MatrixTransformations
 #'
 #' @export
-Gamma2Sigma <- function(Gamma,k=1,full=FALSE){
+Gamma2Sigma <- function(Gamma, k = NULL, full = FALSE) {
   d <- ncol(Gamma)
-  if(full)
-    1/2 * (matrix(rep(Gamma[,k],d), ncol=d,nrow=d) +
-             t(matrix(rep(Gamma[,k],d), ncol=d,nrow=d)) - Gamma)
-  else
-    1/2 * (matrix(rep(Gamma[-k,k],d-1), ncol=d-1,nrow=d-1) +
-             t(matrix(rep(Gamma[-k,k],d-1), ncol=d-1,nrow=d-1)) - Gamma[-k,-k])
+  if(is.null(k)) {
+    ID <- diag(d) - matrix(1/d, d, d)
+    ID %*% (-1/2 * Gamma) %*% ID
+  } else if (full) {
+    1 / 2 * (matrix(rep(Gamma[, k], d), ncol = d, nrow = d) +
+      t(matrix(rep(Gamma[, k], d), ncol = d, nrow = d)) - Gamma)
+  } else {
+    1 / 2 * (matrix(rep(Gamma[-k, k], d - 1), ncol = d - 1, nrow = d - 1) +
+      t(matrix(rep(Gamma[-k, k], d - 1), ncol = d - 1, nrow = d - 1)) - Gamma[-k, -k])
+  }
 }
 
 
+#' Transformation of \eGamma matrix to \eTheta matrix
+#'
+#' Transforms the variogram matrix (\eGamma) from the definition of a
+#' Huesler--Reiss distribution to the corresponding precision matrix
+#' (\eTheta or \eThetaK).
+#'
+#'
+#' @param Gamma Numeric \dxd variogram matrix.
+#' @param k `NULL` or integer between 1 and d. If this is `NULL`, the
+#' \dxd matrix \eTheta is produced, otherwise
+#' the specified \eqn{(d-1) \times (d-1)}{(d-1) x (d-1)} matrix \eThetaK.
+#' 
+#' @details
+#' Every \dxd `Gamma` matrix in the definition of a
+#' Huesler--Reiss distribution can be transformed into a
+#' \dxd \eTheta matrix, which
+#' contains the graph structure corresponding to the Huesler--Reiss distribution
+#' with parameter matrix `Gamma`.
+#'
+#' @return Numeric \eSigmaK matrix of size \d1xd1 if
+#' `full = FALSE`, and of size \dxd if `full = TRUE`.
+#'
+#' @examples
+#' Gamma <- cbind(
+#'   c(0, 1.5, 1.5, 2),
+#'   c(1.5, 0, 2, 1.5),
+#'   c(1.5, 2, 0, 1.5),
+#'   c(2, 1.5, 1.5, 0)
+#' )
+#' Gamma2Theta(Gamma)
+#' 
+#' @references \insertAllCited{}
+#' 
+#' @family MatrixTransformations
+#'
+#' @export
+Gamma2Theta <- function(Gamma, k=NULL) {
+  d <- ncol(Gamma)
+  if(is.null(k)){
+    ID <- diag(d) - matrix(1/d, d, d)
+    S <- ID %*% (-1/2 * Gamma) %*% ID
+    Theta <- corpcor::pseudoinverse(S)
+    return(Theta)
+  }
+  Sigma_k <- Gamma2Sigma(Gamma, k)
+  Theta_k <- chol2inv(chol(Sigma_k))
+  return(Theta_k)
+}
+
+#' Transformation of \eGamma matrix to \eTheta matrix
+#' 
+#' Transforms a precision matrix (\eTheta or \eThetaK)
+#' to the corresponding variogram matrix.
+#' 
+#' @param Theta Numeric \dxd matrix (if `k` is `NULL`)
+#' or \eqn{(d-1) \times (d-1)}{(d-1) x (d-1)} matrix (if `k` is a number).
+#' @param k `NULL` or integer between 1 and d.
+#' If this is `NULL` the input `Theta` is interpreted as a \dxd
+#' precision matrix \eTheta, otherwise as \eThetaK.
+#' 
+#' @return The \dxd variogram matrix implied by `Theta`.
+#' 
+#' @family MatrixTransformations
+#' 
+#' @export
+Theta2Gamma <- function(Theta, k=NULL) {
+  if(is.null(k)){
+    d <- nrow(Theta)
+    id <- matrix(1, d, 1)
+    Sigma <- corpcor::pseudoinverse(Theta)
+    diagSigma <- diag(Sigma)
+    return(id %*% t(diagSigma) + diagSigma %*% t(id) - 2*Sigma)
+  } else{
+    Sigma_k <- chol2inv(chol(Theta))
+    return(Sigma2Gamma(Sigma_k, k))
+  }
+}
 
 
-#' Create \eqn{\Gamma} from vector
+#' Create Gamma or Theta from vector
 #'
-#' This function takes the parameters in the vector \code{par}
-#' (upper triangular Gamma matrix) and returns full Gamma.
+#' This function takes the parameters in the vector `par`
+#' (upper triangular Gamma/Theta matrix) and returns the full Gamma/Theta.
 #'
-#' @param par Numeric vector with \eqn{d} elements.
-#' Upper triangular part of a Gamma matrix.
+#' @param par Numeric vector with `d` elements.
+#' Upper triangular part of a Gamma/Theta matrix.
+#' @param allowMatrix If `TRUE` and `par` is already a matrix, return it as is.
+#' @param allowNull If `TRUE` and `par` is NULL, return NULL.
+#' @param zeroRowSums If `TRUE` the diagonal is set to (-1) times the rowSums.
 #'
-#' @return Numeric matrix \eqn{d \times d}{d x d}. Full Gamma matrix.
+#' @return Numeric matrix \dxd. Full Gamma/Theta matrix.
+#' 
+#' @name par2Matrix
 #'
-par2Gamma = function(par){
-  d = 1/2 + sqrt(1/4 + 2*length(par))
-  if (round(d)!=d) {
+#' @keywords internal
+par2Matrix <- function(par, allowMatrix = FALSE, allowNull = FALSE, zeroRowSums = FALSE){
+  # Check for forbidden/trivial input
+  if(allowMatrix && is.matrix(par)){
+    return(par)
+  }
+  if(is.null(par)){
+    if(allowNull){
+      return(NULL)
+    }
+    stop('`par` must not be NULL (unless allowNull=TRUE).')
+  }
+  # Compute dimension of matrix
+  d <- round(1 / 2 + sqrt(1 / 4 + 2 * length(par)))
+  if (d*(d-1)/2 != length(par)) {
     stop("The length of par does not agree with any square matrix.")
   }
-  G = matrix(0, nrow=d, ncol=d)
-  G[upper.tri(G)] = par
-  return(G + t(G))
+  # Create matrix
+  M <- matrix(0, nrow = d, ncol = d)
+  M[upper.tri(M)] <- par
+  M <- M + t(M)
+  if(zeroRowSums){
+    diag(M) <- (-1) * rowSums(M)
+  }
+  return(M)  
+}
+#' @rdname par2Matrix
+par2Gamma <- function(par, allowMatrix = FALSE, allowNull = FALSE){
+  par2Matrix(par, allowMatrix, allowNull, zeroRowSums = FALSE)
+}
+#' @rdname par2Matrix
+par2Theta <- function(par, allowMatrix = FALSE, allowNull = FALSE){
+  par2Matrix(par, allowMatrix, allowNull, zeroRowSums = TRUE)
 }
 
 
 
-#' Extract upper triangular part of \eqn{\Gamma}
+#' Extract upper triangular part of \eGamma
 #'
 #' This function returns a vector containing the upper triangular part
-#' of the matrix \code{Gamma}. If \code{Gamma} is already a vector, it returns
+#' of the matrix `Gamma`. If `Gamma` is already a vector, it returns
 #' it as it is.
 #'
-#' @param Gamma Numeric \eqn{d \times d}{d x d} variogram matrix.
+#' @param Gamma Numeric \dxd variogram matrix.
 #'
-#' @return Numeric vector with \eqn{d} elements.
-#' The upper triangular part of the given \code{Gamma} matrix.
+#' @return Numeric vector with `d` elements.
+#' The upper triangular part of the given `Gamma` matrix.
 #'
-Gamma2par = function(Gamma){
-  if(is.matrix(Gamma))
-    return(Gamma[upper.tri(Gamma)])
-  else
-    return(Gamma)
+#' @keywords internal
+Gamma2par <- function(Gamma) {
+  if(is.matrix(Gamma)) {
+    return(upper.tri.val(Gamma))
+  }
+  return(Gamma)
 }
 
 
 
-#' Transformation of extremal correlation \eqn{\chi} to the Huesler--Reiss variogram \eqn{\Gamma}
+#' Transformation of extremal correlation \eChi to the Huesler--Reiss variogram \eGamma
 #'
-#' Transforms the extremal correlation \eqn{\chi} into the \code{Gamma} matrix
+#' Transforms the extremal correlation \eChi into the `Gamma` matrix
 #' from the definition of a Huesler--Reiss
 #' distribution.
 #'
 #' @param chi Numeric or matrix, with entries
 #' between 0 and 1.
 #'
-#' @return Numeric or matrix. The \eqn{\Gamma} parameters in the Huesler--Reiss
+#' @return Numeric or matrix. The \eGamma parameters in the Huesler--Reiss
 #' distribution.
 #'
 #' @details
-#' The formula for transformation from \code{chi} to \eqn{\Gamma} that is applied element-wise is
+#' The formula for transformation from `chi` to \eGamma that is applied element-wise is
 #' \deqn{\Gamma = (2 \Phi^{-1}(1 - 0.5 \chi))^2,}
 #' where \eqn{\Phi^{-1}} is the inverse of the standard normal distribution function.
-#' This is the inverse of \code{\link{Gamma2chi}}.
+#' This is the inverse of [Gamma2chi()].
 #'
 #' @export
-chi2Gamma <- function(chi){
-  if (any(chi < 0 | chi > 1)){
+chi2Gamma <- function(chi) {
+  if (any(is_less(chi, 0) | is_greater(chi, 1))) {
     stop("The argument chi must be between 0 and 1.")
   }
-  Gamma <- (2 * stats::qnorm(1 - 0.5 * chi)) ^ 2
+  Gamma <- (2 * stats::qnorm(1 - 0.5 * chi))^2
   return(Gamma)
 }
 
 
-#' Transformation of the Huesler--Reiss variogram \eqn{\Gamma} to extremal correlation \eqn{\chi}
+#' Transformation of the Huesler--Reiss variogram \eGamma to extremal correlation \eChi
 #'
-#' Transforms the \code{Gamma} matrix from the definition of a Huesler--Reiss
-#' distribution into the corresponding extremal correlation \eqn{\chi}.
+#' Transforms the `Gamma` matrix from the definition of a Huesler--Reiss
+#' distribution into the corresponding extremal correlation \eChi.
 #'
 #' @details
-#' The formula for transformation from \code{Gamma} to \eqn{\chi} that is applied element-wise is
+#' The formula for transformation from `Gamma` to \eChi that is applied element-wise is
 #' \deqn{\chi = 2 - 2 \Phi(\sqrt{\Gamma} / 2),}{\chi = 2 - 2 \Phi(sqrt(\Gamma) / 2),}
 #' where \eqn{\Phi} is the standard normal distribution function.
-#' This is the inverse of \code{\link{chi2Gamma}}.
+#' This is the inverse of [chi2Gamma()].
 #'
 #'
 #' @param Gamma Numeric or matrix, with positive entries.
@@ -430,8 +437,7 @@ chi2Gamma <- function(chi){
 #' @return Numeric or matrix. The extremal correlation coefficient.
 #'
 #' @export
-Gamma2chi <- function(Gamma){
-
+Gamma2chi <- function(Gamma) {
   chi <- 2 - 2 * stats::pnorm(sqrt(Gamma) / 2)
   return(chi)
 }
@@ -439,26 +445,27 @@ Gamma2chi <- function(Gamma){
 
 
 
-#' Compute theoretical \eqn{\chi} in 3D
+#' Compute theoretical \eChi in 3D
 #'
-#' Computes the theoretical \eqn{\chi} coefficient in 3 dimensions.
+#' Computes the theoretical \eChi coefficient in 3 dimensions.
 #'
-#' @param Gamma Numeric matrix \eqn{3\times 3}{3 x 3}.
+#' @param Gamma Numeric \eXTimesY{3}{3} matrix.
 #'
-#' @return The 3-dimensional \eqn{\chi} coefficient, i.e.,
+#' @return The 3-dimensional \eChi coefficient, i.e.,
 #' the extremal correlation coefficient for the HR distribution. Note that
 #' \eqn{0 \leq \chi \leq 1}.
 #'
-Gamma2chi_3D = function(Gamma){
+#' @keywords internal
+Gamma2chi_3D <- function(Gamma) {
   d <- dim_Gamma(Gamma)
 
-  if (d != 3){
+  if (d != 3) {
     stop("Gamma must be a 3 x 3 matrix.")
   }
-  res = 3 - V_HR(x=rep(1, times=2),par= Gamma2par(Gamma[c(1,2),c(1,2)])) -
-    V_HR(x=rep(1, times=2),par= Gamma2par(Gamma[c(1,3),c(1,3)])) -
-    V_HR(x=rep(1, times=2),par= Gamma2par(Gamma[c(2,3),c(2,3)])) +
-    V_HR(x=rep(1, times=3),par= Gamma2par(Gamma))
+  res <- 3 - V_HR(x = rep(1, times = 2), Gamma = Gamma[c(1, 2), c(1, 2)]) -
+    V_HR(x = rep(1, times = 2), Gamma = Gamma[c(1, 3), c(1, 3)]) -
+    V_HR(x = rep(1, times = 2), Gamma = Gamma[c(2, 3), c(2, 3)]) +
+    V_HR(x = rep(1, times = 3), Gamma = Gamma)
   return(res)
 }
 
@@ -466,19 +473,41 @@ Gamma2chi_3D = function(Gamma){
 
 #' Marginalize multivariate Pareto dataset
 #'
-#' Marginalize a multivariate Pareto dataset \code{data} with respect to the
-#' variables in \code{set_indices}.
+#' Marginalize a multivariate Pareto dataset `data` with respect to the
+#' variables in `set_indices`.
 #'
-#' @param data Numeric matrix \eqn{n\times d}{n x d}. A dataset containing
+#' @param data Numeric \nxd matrix. A dataset containing
 #' observations following a multivariate Pareto distribution.
-#' @param set_indices Numeric vector with at most \eqn{d} different elements in
-#' 1, ..., \eqn{d}. The variables with respect to which to marginalize
+#' @param set_indices Numeric vector with at most `d` different elements in
+#' 1, ..., `d`. The variables with respect to which to marginalize
 #' the multivariate distribution.
 #'
-#' @return Numeric matrix \eqn{n\times m}{n x m}, where \eqn{m} is the length
-#' of \code{set_indices}. Marginalized multivariate Pareto data.
-mparetomargins <- function(data, set_indices){
+#' @return Numeric \eXTimesY{n}{m} matrix, where `m` is the length
+#' of `set_indices`. Marginalized multivariate Pareto data.
+#'
+#' @keywords internal
+mparetomargins <- function(data, set_indices) {
   data_sub <- data[, set_indices]
   idx <- which(apply(data_sub, 1, max) > 1)
   return(data[idx, set_indices])
+}
+
+
+#' Uniform margin
+#'
+#' Rescale the vector `x` empirically to uniform margin.
+#'
+#' @param x Numeric vector.
+#' @param na.rm Logical. If TRUE, missing values are removed. If FALSE, missing values are kept as such.
+#'
+#' @return Numeric vector with entries rescaled to uniform margins
+#'
+#' @keywords internal
+unif <- function(x, na.rm=FALSE) {
+  if(na.rm){
+    na.last <- NA
+  } else{
+    na.last <- 'keep'
+  }
+  rank(x, ties.method = "first", na.last=na.last) / (sum(!is.na(x)) + 1)
 }

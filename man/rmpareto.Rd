@@ -4,8 +4,7 @@
 \alias{rmpareto}
 \title{Sampling of a multivariate Pareto distribution}
 \usage{
-rmpareto(n, model = c("HR", "logistic", "neglogistic", "dirichlet")[1],
-  d, par)
+rmpareto(n, model = c("HR", "logistic", "neglogistic", "dirichlet"), d, par)
 }
 \arguments{
 \item{n}{Number of simulations.}
@@ -23,16 +22,14 @@ distribution.}
 
 \item{par}{Respective parameter for the given \code{model}, that is,
 \itemize{
-\item \eqn{\Gamma}, numeric \eqn{d \times d}{d x d} variogram matrix,
-if \code{model = HR}.
+\item \eGamma, numeric \dxd variogram matrix, if \code{model = HR}.
 \item \eqn{\theta \in (0, 1)}{0 < \theta < 1}, if \code{model = logistic}.
 \item \eqn{\theta > 0}, if \code{model = neglogistic}.
-\item \eqn{\alpha}, numeric vector of size \code{d} with positive entries,
-if \code{model = dirichlet}.
+\item \eqn{\alpha}, numeric vector of size \code{d} with positive entries, if \code{model = dirichlet}.
 }}
 }
 \value{
-Numeric matrix of size \eqn{n \times d}{n x d} of simulations of the
+Numeric \nxd matrix of simulations of the
 multivariate Pareto distribution.
 }
 \description{
@@ -48,10 +45,12 @@ distribution see \insertCite{coles1991modelling;textual}{graphicalExtremes}.
 ## A 4-dimensional HR distribution
 n <- 10
 d <- 4
-G <-  cbind(c(0, 1.5, 1.5, 2),
-            c(1.5, 0, 2, 1.5),
-            c(1.5, 2, 0, 1.5),
-            c(2, 1.5, 1.5, 0))
+G <- cbind(
+  c(0, 1.5, 1.5, 2),
+  c(1.5, 0, 2, 1.5),
+  c(1.5, 2, 0, 1.5),
+  c(2, 1.5, 1.5, 0)
+)
 
 rmpareto(n, "HR", d = d, par = G)
 
@@ -72,7 +71,6 @@ n <- 10
 d <- 4
 alpha <- c(.8, 1, .5, 2)
 rmpareto(n, "dirichlet", d, par = alpha)
-
 }
 \references{
 \insertAllCited{}
