@@ -1,6 +1,6 @@
 #' Simulate HR extremal functions
 #'
-#' Simulates the Huessler--Reiss extremal functions
+#' Simulates the Huesler-Reiss extremal functions
 #'
 #' @inheritParams rmpareto
 #' @param idx Integer. Index corresponding to the variable over which
@@ -29,7 +29,7 @@ simu_px_HR <- function(n, d, idx, trend, chol_mat) {
 #' Simulates logistic extremal functions
 #'
 #' @inheritParams simu_px_HR
-#' @param idx Integer or numeric vector with `n` elements. Inde(x|ces) from
+#' @param idx Integer or numeric vector with `n` elements. Index/indices from
 #' 1 to `d`, that determine which extremal function to simulate.
 #' @param theta Numeric --- assume \eqn{0 < \theta < 1}.
 #' @return Numeric \nxd matrix. Simulated data.
@@ -40,8 +40,6 @@ simu_px_logistic <- function(n, d, idx, theta) {
   if (length(idx) != 1 & length(idx) != n) {
     stop("Argument idx must be a scalar or a vector with n entries")
   }
-
-
 
   # function body
   res <- matrix(1 / gamma(1 - theta) * (-log(stats::runif(n * d)))^(-theta),
@@ -59,7 +57,7 @@ simu_px_logistic <- function(n, d, idx, theta) {
 #' Simulates negative logistic extremal functions
 #'
 #' @inheritParams simu_px_HR
-#' @param idx Integer or numeric vector with `n` elements. Inde(x|ces) from
+#' @param idx Integer or numeric vector with `n` elements. Index/indices from
 #' 1 to `d`, that determine which extremal function to simulate.
 #' @param theta Numeric --- assume \eqn{\theta > 0}.
 #' @return Numeric \nxd matrix. Simulated data.
@@ -86,7 +84,7 @@ simu_px_neglogistic <- function(n, d, idx, theta) {
 #' Simulates Dirichlet extremal functions
 #'
 #' @inheritParams simu_px_HR
-#' @param idx Integer or numeric vector with `n` elements. Inde(x|ces) from
+#' @param idx Integer or numeric vector with `n` elements. Index/indices from
 #' 1 to `d`, that determine which extremal function to simulate.
 #' @param alpha Numeric vector of size `d`.
 #' @return Numeric \nxd matrix. Simulated data.
@@ -113,7 +111,7 @@ simu_px_dirichlet <- function(n, d, idx, alpha) {
 
 #' Simulate HR extremal functions on a tree
 #'
-#' Simulates the Huessler--Reiss extremal functions on a tree
+#' Simulates the Huesler-Reiss extremal functions on a tree
 #'
 #' @inheritParams rmpareto
 #' @param Gamma_vec Numeric vector with `d-1` elements, where `d` is the

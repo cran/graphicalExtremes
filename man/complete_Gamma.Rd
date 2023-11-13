@@ -12,11 +12,11 @@ complete_Gamma(Gamma, graph = NULL, ...)
 \item{graph}{\code{NULL} or \code{\link[igraph:make_graph]{igraph::graph}} object. If \code{NULL}, the graph
 is implied by non-edge entries in \code{Gamma} being \code{NA}. Must be connected, undirected.}
 
-\item{...}{Further arguments passed to \code{\link[=complete_Gamma_general]{complete_Gamma_general()}} if \code{graph}
+\item{...}{Further arguments passed to \code{\link[=complete_Gamma_general_split]{complete_Gamma_general_split()}} if \code{graph}
 is not decomposable}
 }
 \value{
-Completed \dxd \code{Gamma} matrix.
+Completed \dxd variogram matrix.
 }
 \description{
 Given a \code{graph} and a (partial) variogram matrix \code{Gamma}, returns a full
@@ -85,10 +85,10 @@ complete_Gamma(G, g)
 \seealso{
 \code{\link[=Gamma2Theta]{Gamma2Theta()}}
 
-Other Matrix completions: 
+Other matrix completion related topics:
 \code{\link{complete_Gamma_decomposable}()},
 \code{\link{complete_Gamma_general_demo}()},
 \code{\link{complete_Gamma_general_split}()},
 \code{\link{complete_Gamma_general}()}
 }
-\concept{Matrix completions}
+\concept{matrixCompletions}

@@ -1,3 +1,31 @@
+
+#' Get package data
+#' 
+#' Get private data sets from `inst/extdata`.
+#' 
+#' @param filename Base name of the file. E.g. `"FILENAME"` for a file `inst/extdata/FILENAME`.
+#' @param isRDS Whether the file is an `.RDS` file.
+#' 
+#' @return
+#' If `isRDS=TRUE` an R object.
+#' If `isRDS=FALSE` an environment, containing the R objects from the file.
+#' 
+#' @keywords internal
+getPackageData <- function(filename, isRDS=TRUE){
+  # Path of data file
+  fpath <- system.file('extdata', filename, package='graphicalExtremes')
+
+  # RDS files contain a single object which is returned
+  if(isRDS){
+    return(readRDS(fpath))
+  }
+
+  # RDA files contain one/multiple R object(s) which are returned in a new environment
+  env <- new.env(parent = emptyenv())
+  load(fpath, envir = env)
+  return(env)
+}
+
 #' Upper Danube basin dataset
 #'
 #' A dataset containing river discharge data for tributaries of the Danube.
@@ -8,18 +36,18 @@
 #'  \item{`data_raw`}{A numeric matrix, containing daily (raw) discharge data for each gauging station}
 #'  \item{`info`}{A data frame, containing information about each gauging station}
 #'  \item{`flow_edges`}{
-#'    A two-column numeric matrix. Each row contains the indices (in `info`)
-#'    of a pair of gauging stations that are directly connected by a river.
+#'  A two-column numeric matrix. Each row contains the indices (in `info`)
+#'  of a pair of gauging stations that are directly connected by a river.
 #'  }
 #' }
 #' 
 #' @details
-#' To obtain the matrix `data`, the daily discharge data from the summer months of
-#' 1960 to 2010, given in `dailyData`, was declustered, yielding between seven and ten observations per year.
+#' To obtain the matrix `data_clustered`, the daily discharge data from the summer months of
+#' 1960 to 2010, given in `data_raw`, was declustered, yielding between seven and ten observations per year.
 #' Each row corresponds to one observation from this declustered time series,
-#' the non-unique rownames indicate which year an observation is from.
+#' the *non-unique rownames* indicate which year an observation is from.
 #' Each column corresponds to one of the gauging stations,
-#' with column indices in `data` corresponding to row indices in `info`.
+#' with column indices in `data_raw`/`data_clustered` corresponding to row indices in `info`.
 #' See \insertCite{asadi2015}{graphicalExtremes} for details on the preprocessing and declustering.
 #' 
 #' `info` is a data frame containing the following information for
@@ -32,22 +60,21 @@
 #'  \item{`Area`}{Area of the catchment corresponding to the gauging station}
 #'  \item{`Slope`}{Mean slope of the catchment}
 #'  \item{`PlotCoordX`, `PlotCoordY`}{
-#'    X-Y-coordinates which can be used to arrange the gauging stations when plotting a flow graph.
+#'  X-Y-coordinates which can be used to arrange the gauging stations when plotting a flow graph.
 #'  }
 #' }
 #' 
 #' @examples
-#' g <- igraph::graph_from_edgelist(danube$flow_edges)
-#' loc <- as.matrix(danube$info[,c('PlotCoordX', 'PlotCoordY')])
-#' plot(g, layout = loc)
+#' dim(danube$data_clustered)
+#' colnames(danube$info)
 #' 
-#' @seealso [`flights`], `vignette('graphicalExtremes')`
+#' @family danubeData
+#' @family datasets
 #' 
 #' @references
 #' \insertAllCited{}
 #'
 #' @source Bavarian Environmental Agency <https://www.gkd.bayern.de>.
-#'
 "danube"
 
 
@@ -59,14 +86,14 @@
 #' and pre-processed as described in
 #' \insertCite{hen2022;textual}{graphicalExtremes}.
 #' *Note: The CRAN version of this package contains only data from 2010-2013.*
-#' *The full dataset is available in the Github version of this package.*
+#' *The full dataset is available in the GitHub version of this package.*
 #' 
 #' @format A named `list` with three entries:
 #' \describe{
 #'  \item{`airports`}{A `data.frame`, containing information about US airports}
 #'  \item{`delays`}{A numeric matrix, containing daily aggregated delays at the airports in the dataset}
 #'  \item{`flightCounts`}{
-#'    A numeric array, containing yearly flight numbers between airports in the dataset
+#'  A numeric array, containing yearly flight numbers between airports in the dataset
 #'  }
 #' }
 #' 
@@ -106,23 +133,17 @@
 #' @references \insertAllCited{}
 #' 
 #' @examples 
-#' \dontrun{
-#' 
 #' # Get total number of flights in the dataset:
 #' totalFlightCounts <- apply(flights$flightCounts, c(1,2), sum)
 #' 
 #' # Get number of flights for specific years in the dataset:
-#' flightCounts_08_09 <- apply(flights$flightCounts[,,c('2008', '2009')], c(1,2), sum)
+#' flightCounts_10_11 <- apply(flights$flightCounts[,,c('2010', '2011')], c(1,2), sum)
 #' 
-#' # Get list of connections:
-#' connections <- flightCountMatrixToConnectionList(flights$flightCounts)
-#' connections_08 <- flightCountMatrixToConnectionList(flights$flightCounts[,,'2008'])
+#' # Get list of connections from 2008:
+#' connections_10 <- flightCountMatrixToConnectionList(flights$flightCounts[,,'2010'])
 #' 
-#' # Get total delays (arriving + departing):
-#' totalDelays <- apply(flights$delays, c(1,2), sum)
-#' }
-#' 
-#' @seealso [`danube`], [`flightCountMatrixToConnectionList`], [`plotFlights`]
+#' @family flightData
+#' @family datasets
 #' 
 #' @source
 #' Raw delays data:
@@ -134,6 +155,5 @@
 #' - <https://esubmit.rita.dot.gov/On-Time-Form3A.aspx>
 #' 
 #' Airports (includes license information):
-#' - <https://openflights.org/data.html>
-#' 
+#' - <https://openflights.org/data>
 "flights"
