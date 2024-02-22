@@ -57,7 +57,7 @@ plotFlights(
 # Check whether all dates from the train-test-split are available
 # (due to size restrictions, the CRAN version of this package does not contain all dates)
 allDatesAvailable <- tryCatch({
-    getFlightDelayData('dates', dateFilter = c('tcTrain', 'tcTest'))
+    getFlightDelayData('dates', dateFilter = c('tcAll'))
     TRUE
 }, error = function(...) FALSE)
 cat('All dates avilable:', allDatesAvailable, '\n')

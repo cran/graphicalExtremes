@@ -1,6 +1,6 @@
 Package: graphicalExtremes
 Title: Statistical Methodology for Graphical Extreme Value Models
-Version: 0.3.0
+Version: 0.3.1
 Maintainer: Sebastian Engelke <sebastian.engelke@unige.ch>
 Authors@R: 
     c(
@@ -28,10 +28,10 @@ BugReports: https://github.com/sebastian-engelke/graphicalExtremes/issues
 RdMacros: Rdpack
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2023-11-10 18:26:56 UTC; manuel
+Packaged: 2024-02-22 15:21:22 UTC; manuel
 Author: Sebastian Engelke [aut, cre],
   Adrien S. Hitz [aut],
   Nicola Gnecco [aut],
   Manuel Hentschel [aut]
 Repository: CRAN
-Date/Publication: 2023-11-13 17:13:23 UTC
+Date/Publication: 2024-02-22 16:30:02 UTC

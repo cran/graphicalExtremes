@@ -153,7 +153,7 @@ IATAs &lt;-<span class="st"> </span><span class="kw">getFlightDelayData</span>(<
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Check whether all dates from the train-test-split are available</span>
 <span class="co"># (due to size restrictions, the CRAN version of this package does not contain all dates)</span>
 allDatesAvailable &lt;-<span class="st"> </span><span class="kw">tryCatch</span>({
-    <span class="kw">getFlightDelayData</span>(<span class="st">'dates'</span>, <span class="dt">dateFilter =</span> <span class="kw">c</span>(<span class="st">'tcTrain'</span>, <span class="st">'tcTest'</span>))
+    <span class="kw">getFlightDelayData</span>(<span class="st">'dates'</span>, <span class="dt">dateFilter =</span> <span class="kw">c</span>(<span class="st">'tcAll'</span>))
     <span class="ot">TRUE</span>
 }, <span class="dt">error =</span> <span class="cf">function</span>(...) <span class="ot">FALSE</span>)
 <span class="kw">cat</span>(<span class="st">'All dates avilable:'</span>, allDatesAvailable, <span class="st">'</span><span class="ch">\n</span><span class="st">'</span>)
